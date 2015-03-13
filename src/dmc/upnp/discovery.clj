@@ -117,4 +117,4 @@
 (defn stop [discoverer]
   (when @(:socket discoverer)
     (udp/close @(:socket discoverer))
-    (reset! @(:socket discoverer) nil)))
+    (reset! (:socket discoverer) nil)))
