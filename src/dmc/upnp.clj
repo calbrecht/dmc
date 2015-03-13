@@ -7,7 +7,16 @@
 (defn init []
   (vertx/set-vertx! (vertx/vertx)))
 
-(defonce socket (atom nil))
+(defn map-keys-to-lower [m]
+  (reduce
+   (fn [agg [k v]]
+     (if (string? k)
+       (assoc agg (string/lower-case k) v)
+       (assoc agg k v)))
+   {}
+   m))
+
+(defn new-devices-map [] {})
 
 (defn parse-packet-data [packet]
   (as-> packet data
@@ -22,31 +31,94 @@
      {:start-line (first data)}
      (rest data))))
 
-(defn on-notify [packet]
-  (pprint {:msg "On Notify"
-           :packet packet}))
+(defn parse-urn-type [data]
+  (let [[domain resource-type resource-name version] (string/split data #":")]
+    {:type :urn
+     :domain domain
+     :resource-type resource-type
+     :resource-name resource-name
+     :version version}))
 
-(defn on-packet [packet]
+(defn parse-nt [nt]
+  (if (= nt "upnp:rootdevice")
+    {:type :rootdevice}
+    (let [[type type-rest] (string/split nt #":" 2)]
+      (case type
+            "urn" (parse-urn-type type-rest)
+            "uuid" {:type :uuid}
+            nil))))
+
+(defn get-uuid-from-usn [usn]
+  (let [[_ uuid] (string/split usn #":" 3)]
+    uuid))
+
+(defn parse-notification [packet]
+  (merge packet
+         {:nt (parse-nt (get packet "nt"))
+          :uuid (get-uuid-from-usn (get packet "usn"))}))
+
+(defn resource-type? [t packet]
+  (and (= (-> packet :nt :type) :urn)
+       (= (-> packet :nt :resource-type) t)))
+
+(defn insert-device [devices packet]
+  (assoc devices
+         (-> packet :uuid)
+         {:services {}
+          :resource-name (-> packet :nt :resource-name)
+          :version (-> packet :nt :version)}))
+
+(defn insert-service [devices packet]
+  (let [uuid (-> packet :uuid)
+        resource-name (-> packet :nt :resource-name)]
+    (println "insert service")
+    (pprint packet)
+    (if-not (get devices uuid)
+      devices
+      (assoc-in devices
+                [uuid :services resource-name]
+                {:resource-name (-> packet :nt :resource-name)
+                 :version (-> packet :nt :version)
+                 :location (get packet "location")}))))
+
+(defn insert-service-or-device [devices packet]
+  (cond (resource-type? "device" packet) (insert-device devices packet)
+        (resource-type? "service" packet) (insert-service devices packet)
+        :else devices))
+
+(defn on-notify [devices packet]
+  (let [parsed (parse-notification (:packet packet))]
+    (swap! devices (fn [old] (insert-service-or-device old parsed))))
+  (pprint @devices))
+
+(defn on-packet [devices packet]
   (let [parsed {:host (-> packet :sender :host)
                 :port (-> packet :sender :port)
-                :packet (parse-packet-data (:data packet))}
+                :packet (-> (parse-packet-data (:data packet))
+                            (map-keys-to-lower))}
         start-line (-> parsed :packet :start-line)]
     (case start-line
-      "NOTIFY * HTTP/1.1" (on-notify parsed)
+      "NOTIFY * HTTP/1.1" (on-notify devices parsed)
       nil)))
+
+(defonce socket (atom nil))
+(defonce devices (atom nil))
 
 (defn stop []
   (when @socket
     (udp/close @socket)))
+
 (defn restart []
   (stop)
   (reset! socket (udp/socket))
+  (reset! devices (new-devices-map))
   (-> @socket
       (udp/listen 1900)
-      (udp/on-data #(on-packet %))
+      (udp/on-data #(on-packet devices %))
       (udp/join-multicast-group "239.255.255.250"
                                 "enp0s25"
                                 (fn [err sock]
                                   (if err
                                     (println "err" err)
                                     (println "join is geil"))))))
+
