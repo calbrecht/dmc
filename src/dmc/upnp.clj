@@ -7,7 +7,7 @@
 (defn init []
   (vertx/set-vertx! (vertx/vertx)))
 
-(defn map-keys-to-lower [m]
+(defn map-keys-to-lower-case [m]
   (reduce
    (fn [agg [k v]]
      (if (string? k)
@@ -95,7 +95,7 @@
   (let [parsed {:host (-> packet :sender :host)
                 :port (-> packet :sender :port)
                 :packet (-> (parse-packet-data (:data packet))
-                            (map-keys-to-lower))}
+                            (map-keys-to-lower-case))}
         start-line (-> parsed :packet :start-line)]
     (case start-line
       "NOTIFY * HTTP/1.1" (on-notify devices parsed)
