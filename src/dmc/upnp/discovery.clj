@@ -100,13 +100,13 @@
 
 (defn new-devices-map [] {})
 
-(defn new-discovery []
+(defn new-discovery [config]
   (let [devices (atom (new-devices-map))
         socket (-> (new-socket)
                    (udp/listen 1900)
                    (udp/on-data #(on-packet devices %))
                    (udp/join-multicast-group "239.255.255.250"
-                                             "enp0s25"
+                                             (:iface config)
                                              (fn [err sock]
                                                (if err
                                                  (println "err" err)
