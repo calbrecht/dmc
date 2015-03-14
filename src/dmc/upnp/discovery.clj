@@ -2,7 +2,8 @@
   (:require [vertx.embed :as vertx]
             [vertx.datagram :as udp]
             [clojure.pprint :refer [pprint]]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [dmc.config :as conf]))
 
 (defn init []
   (vertx/set-vertx! (vertx/vertx)))
@@ -106,7 +107,7 @@
                    (udp/listen 1900)
                    (udp/on-data #(on-packet devices %))
                    (udp/join-multicast-group "239.255.255.250"
-                                             "enp0s25"
+                                             (:iface conf/settings)
                                              (fn [err sock]
                                                (if err
                                                  (println "err" err)
