@@ -96,7 +96,9 @@
       "NOTIFY * HTTP/1.1" (on-notify devices parsed)
       nil)))
 
-(defn new-socket [] (udp/socket))
+(defn new-socket
+  ([] (new-socket :ipv4))
+  ([family] (udp/socket family {:reuse-address true})))
 
 (defn new-devices-map [] {})
 
