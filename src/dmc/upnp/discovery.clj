@@ -2,8 +2,7 @@
   (:require [vertx.embed :as vertx]
             [vertx.datagram :as udp]
             [clojure.pprint :refer [pprint]]
-            [clojure.string :as string]
-            [dmc.config :as conf]))
+            [clojure.string :as string]))
 
 (defn init []
   (vertx/set-vertx! (vertx/vertx)))
@@ -101,13 +100,13 @@
 
 (defn new-devices-map [] {})
 
-(defn new-discovery []
+(defn new-discovery [config]
   (let [devices (atom (new-devices-map))
         socket (-> (new-socket)
                    (udp/listen 1900)
                    (udp/on-data #(on-packet devices %))
                    (udp/join-multicast-group "239.255.255.250"
-                                             (:iface conf/settings)
+                                             (:iface config)
                                              (fn [err sock]
                                                (if err
                                                  (println "err" err)

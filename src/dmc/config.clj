@@ -1,6 +1,8 @@
 (ns dmc.config
   (:require [clojure.edn :as edn]))
 
-(def settings
-  (merge (edn/read-string (slurp "settings.dist.edn"))
-         (edn/read-string (slurp "settings.edn"))))
+(defn get-config
+  ([] (get-config "settings.edn"))
+  ([filename]
+   (merge (edn/read-string (slurp "settings.dist.edn"))
+          (edn/read-string (slurp filename)))))
