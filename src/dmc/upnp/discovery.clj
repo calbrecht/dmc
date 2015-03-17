@@ -1,7 +1,7 @@
 (ns dmc.upnp.discovery
   (:require [vertx.embed :as vertx]
             [vertx.datagram :as udp]
-            [dmc.upnp.header :as header]
+            [dmc.upnp.multicast :as multicast]
             [clojure.pprint :refer [pprint]]
             [clojure.string :as string]))
 
@@ -122,7 +122,7 @@
   ([discoverer search-target]
    (udp/send
     @(:socket discoverer)
-    (header/create-search {:search-target search-target})
+    (multicast/create-search {:search-target search-target})
     "239.255.255.250"
     1900)))
 
