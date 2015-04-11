@@ -13,7 +13,6 @@
 (defn wrap-nil-on-exception [f]
   (fn [& args]
     (try
-      (log/info "apply" args "to" f)
       (apply f args)
       (catch Throwable t
         nil))))
