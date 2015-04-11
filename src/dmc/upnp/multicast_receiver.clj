@@ -22,7 +22,9 @@
                     (:iface config)
                     (fn [err sock]
                       (if err
-                        (throw (Exception. "Error joining multicast group" err))
+                        (do
+                          (log/error "Failed to join multicast group" err)
+                          (throw (Exception. "Error joining multicast group")))
                         (log/info "Joined multicast group")))))]
     {:socket (atom socket)
      :output-chan pipeline-chan}))
