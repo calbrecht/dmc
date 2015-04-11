@@ -61,6 +61,4 @@
      (try
        (step result (parse-packet input))
        (catch Throwable t
-         (log/warn "error" t)
-         (log/warn "on packet" input)
          (step result))))))

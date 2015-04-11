@@ -69,19 +69,3 @@
                                                   :device (:resource-name usn)
                                                   :version (:version usn)}}))))
 
-(def packet-filter (filter #(= "NOTIFY" (get-in % [:start-line :method]))))
-
-(defn parse-discoveries-t [step]
-  (fn
-    ([] (step))
-    ([result] (step result))
-    ([result input]
-     (try
-       (step result (parse-discovery input))
-       (catch Throwable t
-         (log/warn "error" t)
-         (log/warn "on packet" input)
-         (step result))))))
-
-(def parse-discoveries (comp packet-filter
-                             parse-discoveries-t))

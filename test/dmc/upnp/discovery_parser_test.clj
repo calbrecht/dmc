@@ -24,23 +24,7 @@
       =>
       res/demo-output-discovery-packet-service)
 
-(fact "it should work as a transducer"
-      (into []
-            parser/parse-discoveries
-            [res/demo-discovery-packet-device
-             res/demo-discovery-packet-device-with-urn
-             {:foo "bar"}
-             {:header {"nt" "foo"
-                       "usn" "foo"}}
-             res/demo-discovery-packet-rootdevice
-             res/demo-discovery-packet-service])
-      =>
-      [res/demo-output-discovery-packet-device
-       res/demo-output-discovery-packet-device-with-urn
-       res/demo-output-discovery-packet-rootdevice
-       res/demo-output-discovery-packet-service])
-
-(fact "it should return nil on error"
+(fact "it should throw on error"
       (parser/parse-discovery {:header {"nt" "foo"
                                         "usn" "foo"}})
       =>
