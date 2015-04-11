@@ -4,6 +4,7 @@
             [dmc.upnp.multicast-receiver]
             [clojure.core.async :as as]
             [dmc.vertx]
+            [dmc.config :as config]
             [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
             [clj-logging-config.log4j :as log4j])
@@ -28,20 +29,20 @@
   (component/start-system system))
 
 (defn -main [& args]
-  (let [system (->> {:iface "enp0s25"}
-               (try-and-print new-system)
-               (try-and-print start-system))]
-    (let [chan (as/chan)
-          publication (get-in system [:multicast-receiver :publication])]
-      (doseq [topic [:discovery-rootdevice
-                     :discovery-device-type
-                     :discovery-device
-                     :discovery-service-type]]
-        (log/info "subscribe to" topic)
-        (as/sub publication topic chan))
-      (loop []
-        (let [packet (as/<!! chan)]
-          (when packet
-            (pprint packet)
-            (recur)))))))
+  (let [system (->> (config/get-config)
+                    (try-and-print new-system)
+                    (try-and-print start-system))
+        chan (as/chan)
+        publication (get-in system [:multicast-receiver :publication])]
+    (doseq [topic [:discovery-rootdevice
+                   :discovery-device-type
+                   :discovery-device
+                   :discovery-service-type]]
+      (log/info "subscribe to" topic)
+      (as/sub publication topic chan))
+    (loop []
+      (let [packet (as/<!! chan)]
+        (when packet
+          (pprint packet)
+          (recur))))))
 
