@@ -17,7 +17,14 @@
   (fn
     ([] (step))
     ([result] (step result))
-    ([result input] (assoc input :type :raw))))
+    ([result input]
+     (try
+       (if (map? input)
+         (step result (assoc input :type :raw))
+         (step result))
+       (catch Throwable t
+         (log/warn "invalid packet" t)
+         (step result))))))
 
 (defn new-parsing-channel [input-chan]
   (let [input (as/mult input-chan)
