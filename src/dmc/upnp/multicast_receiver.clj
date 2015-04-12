@@ -1,6 +1,5 @@
 (ns dmc.upnp.multicast-receiver
-  (:require [dmc.upnp.discovery-parser :as discovery-parser]
-            [dmc.upnp.packet-parser :as packet-parser]
+  (:require [dmc.upnp.packet-pipeline :as pipeline]
             [clojure.tools.logging :as log]
             [clojure.core.async :as as]
             [com.stuartsierra.component :as component]
@@ -13,41 +12,22 @@
   ([] (new-socket :ipv4))
   ([family] (udp/socket family {:reuse-address true})))
 
-(defn raw-annotator [step]
-  (fn
-    ([] (step))
-    ([result] (step result))
-    ([result input]
-     (try
-       (if (map? input)
-         (step result (assoc input :type :raw))
-         (step result))
-       (catch Throwable t
-         (log/warn "invalid packet" t)
-         (step result))))))
-
-(defn new-parsing-channel [input-chan]
-  (let [input (as/mult input-chan)
-        discovery-chan (as/chan 1 discovery-parser/parse-discoveries)
-        raw-chan (as/chan 1 raw-annotator)]
-    (as/tap input discovery-chan)
-    (as/tap input raw-chan)
-    (as/merge [discovery-chan raw-chan])))
-
 (defn new-receiver [config]
-  (let [output-chan (as/chan (as/sliding-buffer 1024) packet-parser/parse-packets)
+  (let [pipeline-chan (pipeline/new-packet-processing-pipeline)
         socket (-> (new-socket)
                    (udp/listen 1900)
-                   (udp/on-data (fn [data] (as/go (as/>! output-chan data))))
+                   (udp/on-data (fn [data] (as/go (as/>! pipeline-chan data))))
                    (udp/join-multicast-group
                     "239.255.255.250"
                     (:iface config)
                     (fn [err sock]
                       (if err
-                        (throw (Exception. "Error joining multicast group" err))
+                        (do
+                          (log/error "Failed to join multicast group" err)
+                          (throw (Exception. "Error joining multicast group")))
                         (log/info "Joined multicast group")))))]
     {:socket (atom socket)
-     :output-chan (new-parsing-channel output-chan)}))
+     :output-chan pipeline-chan}))
 
 (defn stop [receiver]
   (when-let [chan (:output-chan receiver)]
